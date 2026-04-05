@@ -17,7 +17,8 @@ class ColorAutoEncoder(nn.Module):
         self.up4 = nn.ConvTranspose2d(128,3,3,2,1,output_padding=1)
 
         self.relu = nn.ReLU()
-        self.sigmoid = nn.Sigmoid()
+        # Use Tanh so outputs match dataset normalization to [-1, 1]
+        self.tanh = nn.Tanh()
 
     def forward(self,x):
 
@@ -29,6 +30,6 @@ class ColorAutoEncoder(nn.Module):
         u1 = self.relu(self.up1(d4))
         u2 = self.relu(self.up2(torch.cat((u1,d3),dim=1)))
         u3 = self.relu(self.up3(torch.cat((u2,d2),dim=1)))
-        u4 = self.sigmoid(self.up4(torch.cat((u3,d1),dim=1)))
+        u4 = self.tanh(self.up4(torch.cat((u3,d1),dim=1)))
 
         return u4

@@ -7,7 +7,7 @@ def evaluate(model, dataloader, criterion, device):
 
     with torch.no_grad():
 
-        for color_imgs, gray_imgs in tqdm(dataloader):
+        for gray_imgs, color_imgs in tqdm(dataloader):
 
             color_imgs = color_imgs.to(device)
             gray_imgs = gray_imgs.to(device)
