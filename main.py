@@ -11,7 +11,7 @@ from utils.visualization import show_predictions
 # =============================
 # CHOOSE MODEL
 # =============================
-USE_GAN = False   # Set False for Autoencoder
+USE_GAN = True   # Set False for Autoencoder
 
 # =============================
 # Imports based on choice
@@ -29,12 +29,7 @@ else:
 # Configuration
 # =============================
 BATCH_SIZE = 32
-LEARNING_RATE = 0.0001
-
-if USE_GAN:
-    EPOCHS = 20
-else:
-    EPOCHS = 10
+EPOCHS = 25
 
 AUTOENCODER_PATH = "checkpoints/autoencoder.pth"
 GEN_PATH = "checkpoints/generator.pth"
@@ -45,9 +40,7 @@ DISC_PATH = "checkpoints/discriminator.pth"
 # =============================
 os.makedirs("checkpoints", exist_ok=True)
 
-# ❌ NO TRANSFORMS ANYMORE
-# Fix path: dataset folder is lowercase `data`
-dataset = LandscapeDataset("./data")
+dataset = LandscapeDataset("./Data")
 
 train_size = int(0.8 * len(dataset))
 test_size = len(dataset) - train_size
@@ -69,7 +62,7 @@ if not USE_GAN:
     model = ColorAutoEncoder().to(device)
 
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     if os.path.exists(AUTOENCODER_PATH):
         print("Loading Autoencoder...")
@@ -107,35 +100,8 @@ else:
     adversarial_loss = nn.BCEWithLogitsLoss()
     l1_loss = nn.L1Loss()
 
-    g_optimizer = optim.Adam(generator.parameters(), lr=0.0002, betas=(0.5, 0.999))
-    d_optimizer = optim.Adam(discriminator.parameters(), lr=0.0002, betas=(0.5, 0.999))
-
-    # Total Variation (TV) loss to encourage spatial smoothness and reduce speckle
-    def tv_loss(x):
-        # x: (B, C, H, W)
-        h_tv = torch.mean(torch.abs(x[:, :, :, :-1] - x[:, :, :, 1:]))
-        v_tv = torch.mean(torch.abs(x[:, :, :-1, :] - x[:, :, 1:, :]))
-        return h_tv + v_tv
-
-    tv_weight = 0.1
-
-    # Color-consistency loss: compare normalized chroma (color ratios) to
-    # encourage stable colors independent of brightness.
-    def color_consistency_loss(fake, real, eps=1e-6):
-        # Inputs are in [-1,1]; convert to [0,1]
-        f = (fake + 1) / 2
-        r = (real + 1) / 2
-
-        # normalize across channels to get color ratios (sum to 1)
-        f_sum = torch.sum(f, dim=1, keepdim=True)
-        r_sum = torch.sum(r, dim=1, keepdim=True)
-
-        f_norm = f / (f_sum + eps)
-        r_norm = r / (r_sum + eps)
-
-        return torch.mean(torch.abs(f_norm - r_norm))
-
-    cc_weight = 10.0
+    g_optimizer = optim.Adam(generator.parameters(), lr=0.0001, betas=(0.5, 0.999))
+    d_optimizer = optim.Adam(discriminator.parameters(), lr=0.0001, betas=(0.5, 0.999))
 
     # -----------------------------
     # Load or Train
@@ -152,7 +118,7 @@ else:
 
         for epoch in range(EPOCHS):
 
-            for gray, real_color in trainloader:
+            for step, (gray, real_color) in enumerate(trainloader):
 
                 gray = gray.to(device)
                 real_color = real_color.to(device)
@@ -163,39 +129,43 @@ else:
                 g_optimizer.zero_grad()
 
                 fake_color = generator(gray)
-                pred_fake = discriminator(gray, fake_color)
+
+                # Optional blur stabilization
+                fake_for_disc = TF.gaussian_blur(fake_color, kernel_size=3)
+
+                pred_fake = discriminator(gray, fake_for_disc)
 
                 valid = torch.ones_like(pred_fake)
-                fake = torch.zeros_like(pred_fake)
 
-                cc = color_consistency_loss(fake_color, real_color)
-                g_loss = (
-                    adversarial_loss(pred_fake, valid)
-                    + 100 * l1_loss(fake_color, real_color)
-                    + tv_weight * tv_loss(fake_color)
-                    + cc_weight * cc
-                )
+                g_loss = 0.5 * adversarial_loss(pred_fake, valid) + 200 * l1_loss(fake_color, real_color)
 
                 g_loss.backward()
                 g_optimizer.step()
 
                 # -----------------
-                # Train Discriminator
+                # Train Discriminator (slower)
                 # -----------------
-                d_optimizer.zero_grad()
+                if step % 2 == 0:
+                    d_optimizer.zero_grad()
 
-                pred_real = discriminator(gray, real_color)
-                loss_real = adversarial_loss(pred_real, valid)
+                    fake_detached = fake_color.detach()
+                    fake_detached = TF.gaussian_blur(fake_detached, kernel_size=3)
 
-                pred_fake = discriminator(gray, fake_color.detach())
-                loss_fake = adversarial_loss(pred_fake, fake)
+                    pred_real = discriminator(gray, real_color)
+                    pred_fake = discriminator(gray, fake_detached)
 
-                d_loss = (loss_real + loss_fake) / 2
+                    valid = torch.ones_like(pred_real)
+                    fake = torch.zeros_like(pred_fake)
 
-                d_loss.backward()
-                d_optimizer.step()
+                    loss_real = adversarial_loss(pred_real, valid)
+                    loss_fake = adversarial_loss(pred_fake, fake)
 
-            print(f"Epoch [{epoch+1}/{EPOCHS}] | G Loss: {g_loss.item():.4f} | D Loss: {d_loss.item():.4f}")
+                    d_loss = (loss_real + loss_fake) / 2
+
+                    d_loss.backward()
+                    d_optimizer.step()
+
+            print(f"Epoch [{epoch+1}/{EPOCHS}] | G Loss: {g_loss.item():.4f}")
 
         torch.save(generator.state_dict(), GEN_PATH)
         torch.save(discriminator.state_dict(), DISC_PATH)
@@ -219,7 +189,7 @@ else:
     real_color = real_color.cpu()
     fake_color = fake_color.cpu()
 
-    # ✅ Convert from [-1,1] → [0,1]
+    # Convert from [-1,1] → [0,1]
     gray = (gray + 1) / 2
     real_color = (real_color + 1) / 2
     fake_color = (fake_color + 1) / 2
@@ -228,6 +198,11 @@ else:
     gray = torch.clamp(gray, 0, 1)
     real_color = torch.clamp(real_color, 0, 1)
     fake_color = torch.clamp(fake_color, 0, 1)
+
+    # Crop borders (final polish)
+    gray = gray[:, :, 2:-2, 2:-2]
+    real_color = real_color[:, :, 2:-2, 2:-2]
+    fake_color = fake_color[:, :, 2:-2, 2:-2]
 
     show_predictions(real_color, gray, fake_color)
 
