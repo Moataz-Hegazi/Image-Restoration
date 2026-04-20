@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Colorization - Restoration Tool</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🎨 Image Colorization</h1>
+            <p class="subtitle">Transform grayscale images into vibrant colors using AI</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Upload Section -->
+            <section class="upload-section">
+                <div class="upload-box" id="uploadBox">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <h2>Upload Image</h2>
+                    <p>Click to browse or drag and drop your grayscale image</p>
+                    <input type="file" id="imageInput" accept="image/*" hidden>
+                </div>
+                <button id="uploadBtn" class="btn btn-primary" style="display: none;">Upload</button>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <div class="results-container">
+                    <!-- Original Image -->
+                    <div class="image-panel">
+                        <h3>Original Image</h3>
+                        <div class="image-wrapper">
+                            <img id="originalImage" src="" alt="Original">
+                        </div>
+                    </div>
+
+                    <!-- Separator -->
+                    <div class="separator">→</div>
+
+                    <!-- Colorized Image -->
+                    <div class="image-panel">
+                        <h3>Colorized Image</h3>
+                        <div class="image-wrapper" id="colorizedWrapper">
+                            <div class="loading-spinner" id="loadingSpinner">
+                                <div class="spinner"></div>
+                                <p>Processing image...</p>
+                            </div>
+                            <img id="colorizedImage" src="" alt="Colorized" style="display: none;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <button id="downloadBtn" class="btn btn-success">
+                        📥 Download Colorized Image
+                    </button>
+                    <button id="resetBtn" class="btn btn-secondary">
+                        🔄 Process Another Image
+                    </button>
+                </div>
+            </section>
+
+            <!-- Info Section -->
+            <section class="info-section">
+                <h2>How it works</h2>
+                <div class="info-grid">
+                    <div class="info-card">
+                        <span class="info-icon">1️⃣</span>
+                        <h4>Upload</h4>
+                        <p>Select a grayscale or damaged image from your device</p>
+                    </div>
+                    <div class="info-card">
+                        <span class="info-icon">2️⃣</span>
+                        <h4>Process</h4>
+                        <p>Our AI model analyzes and colorizes your image</p>
+                    </div>
+                    <div class="info-card">
+                        <span class="info-icon">3️⃣</span>
+                        <h4>Download</h4>
+                        <p>Get your beautifully restored image instantly</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2026 Image Restoration Tool. Powered by AI</p>
+        </footer>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="error-message" style="display: none;">
+            <span id="errorText"></span>
+            <button onclick="closeError()">&times;</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

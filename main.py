@@ -17,10 +17,10 @@ USE_GAN = True   # Set False for Autoencoder
 # Imports based on choice
 # =============================
 if USE_GAN:
-    from models.generator import Generator
-    from models.discriminator import Discriminator
+    from backend.models.generator import Generator
+    from backend.models.discriminator import Discriminator
 else:
-    from models.autoencoder import ColorAutoEncoder
+    from backend.models.autoencoder import ColorAutoEncoder
     from training.train import train
     from training.evaluate import evaluate
     from utils.prediction import predict_batch
@@ -207,3 +207,7 @@ else:
     show_predictions(real_color, gray, fake_color)
 
     print("GAN visualization complete!")
+# TO RUN BACKEND: uvicorn main:app --reload --host 0.0.0.0 --port 8000
+# uvicorn api:app --reload --host 0.0.0.0 --port 8000
+# TO RUN FRONTEND: 
+# python -m http.server 8080
